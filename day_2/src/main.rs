@@ -1,7 +1,8 @@
-use std::{error::Error, fs};
+use anyhow::Result;
+use std::fs;
 use day_2::*;
 
-fn main() -> Result<(), Box<dyn Error>> {
+fn main() -> Result<()> {
     let input = fs::read_to_string("./day_2/input")?;
     let entries = parse_lines::<Entry<part_one::Rule>>(input.clone());
     println!("Valid passwords in part one: {}", count_valid(&entries));

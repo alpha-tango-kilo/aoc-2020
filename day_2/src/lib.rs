@@ -1,5 +1,6 @@
-use std::{ops::BitXor, str::FromStr};
+use anyhow::{Context, Result};
 use regex::Regex;
+use std::{ops::BitXor, str::FromStr};
 
 pub trait Validatable {
     fn valid(&self) -> bool;
@@ -16,31 +17,25 @@ pub fn parse_lines<T: FromStr>(string: String) -> Vec<T> {
 }
 
 #[derive(Debug)]
-pub struct Entry<T: FromStr> {
+pub struct Entry<T: FromStr>  {
     rule: T,
     pwd: String,
 }
 
 impl<T: FromStr> FromStr for Entry<T> {
-    type Err = String;
+    type Err = anyhow::Error;
 
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
+    fn from_str(s: &str) -> Result<Self> {
         let mut parts = s.split(": ");
+        let rule_string = parts.next()
+            .context(format!("String in incorrect format : {:?}", s))?;
+        // This is awful practice but I can't get the error out without the compiler throwing a hissy fit
+        let rule = T::from_str(rule_string).ok()
+            .context(format!("Failed to parse {} into a rule", rule_string))?;
 
-        // Don't nest match statements for readability
-        let rule = match parts.next() {
-            Some(rule_string) => T::from_str(rule_string),
-            None => return Err(format!("String in incorrect format : {:?}", s)),
-        };
-        let rule = match rule {
-            Ok(r) => r,
-            Err(_) => return Err(String::from("Failed to create rule")),
-        };
-
-        let pwd = match parts.next() {
-            Some(str) => String::from(str),
-            None => return Err(format!("No second half to input string: {:?}", s)),
-        };
+        let pwd = parts.next()
+            .context(format!("No second half to input string: {:?}", s))?
+            .to_string();
 
         Ok(Entry {
             rule,
@@ -68,8 +63,9 @@ impl Validatable for Entry<part_two::Rule> {
 }
 
 pub mod part_one {
-    use std::str::FromStr;
+    use anyhow::{Context, Result};
     use regex::Regex;
+    use std::str::FromStr;
 
     #[derive(Debug)]
     pub struct Rule {
@@ -79,29 +75,21 @@ pub mod part_one {
     }
 
     impl FromStr for Rule {
-        type Err = String;
+        type Err = anyhow::Error;
 
-        fn from_str(s: &str) -> Result<Self, Self::Err> {
+        fn from_str(s: &str) -> Result<Self> {
             let re = Regex::new("[0-9]+").unwrap();
             let mut matches = re.find_iter(s);
 
-            let min_occurences = match matches.next() {
-                Some(m) => m,
-                None => return Err(format!("Minimum occurences not found in {:?}", s)),
-            };
-            let min_occurences = match min_occurences.as_str().parse::<usize>() {
-                Ok(n) => n,
-                Err(e) => return Err(e.to_string()),
-            };
+            let min_occurences = matches.next()
+                .context(format!("Minimum occurences not found in {:?}", s))?
+                .as_str()
+                .parse::<usize>()?;
 
-            let max_occurences = match matches.next() {
-                Some(m) => m,
-                None => return Err(format!("Maximum occurences not found in {:?}", s)),
-            };
-            let max_occurences = match max_occurences.as_str().parse::<usize>() {
-                Ok(n) => n,
-                Err(e) => return Err(e.to_string()),
-            };
+            let max_occurences = matches.next()
+                .context(format!("Maximum occurences not found in {:?}", s))?
+                .as_str()
+                .parse::<usize>()?;
 
             Ok(Rule {
                 min_occurences,
@@ -116,6 +104,7 @@ pub mod part_one {
 pub mod part_two {
     use std::str::FromStr;
     use regex::Regex;
+    use anyhow::{Context, Result};
 
     #[derive(Debug)]
     pub struct Rule {
@@ -127,29 +116,23 @@ pub mod part_two {
     pub struct Indexes(pub(crate) usize, pub(crate) usize);
 
     impl FromStr for Rule {
-        type Err = String;
+        type Err = anyhow::Error;
 
-        fn from_str(s: &str) -> Result<Self, Self::Err> {
+        fn from_str(s: &str) -> Result<Self> {
             let re = Regex::new("[0-9]+").unwrap();
             let mut matches = re.find_iter(s);
 
-            let index_one = match matches.next() {
-                Some(m) => m,
-                None => return Err(format!("Minimum occurences not found in {:?}", s)),
-            };
-            let index_one = match index_one.as_str().parse::<usize>() {
-                Ok(n) => n - 1,
-                Err(e) => return Err(e.to_string()),
-            };
+            let index_one = matches.next()
+                .context(format!("Index one not found in {:?}", s))?
+                .as_str()
+                .parse::<usize>()?
+                - 1;
 
-            let index_two = match matches.next() {
-                Some(m) => m,
-                None => return Err(format!("Maximum occurences not found in {:?}", s)),
-            };
-            let index_two = match index_two.as_str().parse::<usize>() {
-                Ok(n) => n - 1,
-                Err(e) => return Err(e.to_string()),
-            };
+            let index_two = matches.next()
+                .context(format!("Index two not found in {:?}", s))?
+                .as_str()
+                .parse::<usize>()?
+                - 1;
 
             Ok(Rule {
                 indexes: Indexes(index_one, index_two),
