@@ -9,12 +9,17 @@ pub const REQUIRED_KEYS_TASK_ONE: [&str; 7] = [
     "hgt",
     "hcl",
     "ecl",
-    "cid",
+    "pid",
 ];
 
 pub fn process_batch_file(s: &str) -> Vec<Passport> {
     s.split("\n\n")
-        .filter_map(|passport_string| { Passport::new(passport_string).ok() })
+        .filter_map(|passport_string| {
+            match Passport::new(passport_string) {
+                Ok(p) => Some(p),
+                Err(why) => { eprintln!("Dropped\n{:?}\n{}", passport_string, why); None },
+            }
+        })
         .collect()
 }
 
