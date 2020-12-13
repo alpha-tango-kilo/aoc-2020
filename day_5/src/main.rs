@@ -1,6 +1,7 @@
 use anyhow::Result;
 use std::fs;
-use day_5::parse_lines;
+use day_5::{parse_lines, Seat};
+use std::collections::HashSet;
 
 fn main() -> Result<()> {
     let input = fs::read_to_string("./day_5/input")?;
@@ -8,6 +9,22 @@ fn main() -> Result<()> {
     // Unwrap is guaranteed as Seat impl Ord
     let highest_id = seats.iter().max().unwrap();
     println!("Highest ID: {}", highest_id.get_id());
+
+    let seats = seats.into_iter()
+        .filter(|s| { s.row != 0 && s.row != 128})
+        .map(|s| { s.get_id() })
+        .collect::<Vec<_>>();
+
+    for (n, a_id) in seats.iter().enumerate() {
+        let (_, after) = seats.split_at(n);
+        for b_id in after {
+            let middle = if a_id > b_id { a_id + 1 } else { b_id + 1 };
+            if !seats.contains(&middle) {
+                println!("Sit in seat {}", middle);
+                break;
+            }
+        }
+    }
 
     Ok(())
 }
