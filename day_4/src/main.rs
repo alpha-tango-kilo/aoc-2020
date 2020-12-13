@@ -1,17 +1,18 @@
 use anyhow::Result;
 use std::fs;
-use day_4::{process_batch_file, count_valid};
+use day_4::{process_batch_file, count_valid_task_one, count_valid_task_two};
 
 fn main() -> Result<()> {
     let input = fs::read_to_string("./day_4/input")?;
     let passports = process_batch_file(&input);
-    println!("Valid passports: {}", count_valid(&passports));
+    println!("Valid passports (task one): {}", count_valid_task_one(&passports));
+    println!("Valid passports (task two): {}", count_valid_task_two(&passports));
     Ok(())
 }
 
 #[cfg(test)]
 mod tests {
-    use day_4::{process_batch_file, count_valid};
+    use day_4::{process_batch_file, count_valid_task_one};
 
     const INPUT: &str = "ecl:gry pid:860033327 eyr:2020 hcl:#fffffd
 byr:1937 iyr:2017 cid:147 hgt:183cm
@@ -30,6 +31,6 @@ iyr:2011 ecl:brn hgt:59in";
     #[test]
     fn example_data_part_one() {
         let passports = process_batch_file(INPUT);
-        println!("Number of valid passports: {}", count_valid(&passports));
+        println!("Number of valid passports: {}", count_valid_task_one(&passports));
     }
 }
