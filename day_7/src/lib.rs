@@ -1,8 +1,7 @@
-use anyhow::{Result, Context};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
-pub fn process_rules(s: String) -> Result<HashMap<String, Vec<(String, usize)>>> {
-    let mut generation_map: HashMap<String, Vec<(String, usize)>> = HashMap::with_capacity(500);
+pub fn process_rules(s: String) -> HashMap<String, HashSet<String>> {
+    let mut generation_map: HashMap<String, HashSet<String>> = HashMap::with_capacity(500);
 
     for line in s.lines() {
         let left_colour = line.split_whitespace()
@@ -10,21 +9,15 @@ pub fn process_rules(s: String) -> Result<HashMap<String, Vec<(String, usize)>>>
             .take(2)
             .collect::<String>();
 
-        let remaining = line.split_whitespace()
+        let remaining: String = line.split_whitespace()
             // Gets us to the start of the list of contents
             .skip(4)
             .collect::<Vec<&str>>()
             .join(" ");
 
-        for rule in remaining.split(", ") {
-            let number_str = rule.split_whitespace()
-                // Number is always the first word
-                .take(1)
-                .collect::<String>();
-            if number_str == "no" { break; }
-            let number = number_str.parse::<usize>()
-                .context(format!("This should be a number: {}", number_str))?;
+        if remaining == "no other bags." { continue; }
 
+        for rule in remaining.split(", ") {
             let right_colour = rule.split_whitespace()
                 // Skip the number
                 .skip(1)
@@ -33,41 +26,63 @@ pub fn process_rules(s: String) -> Result<HashMap<String, Vec<(String, usize)>>>
                 .collect::<String>();
 
             match generation_map.get_mut(&left_colour) {
-                Some(vec) => vec.push((right_colour, number)),
+                Some(set) => { set.insert(right_colour); },
                 None => {
+                    let mut set = HashSet::new();
+                    set.insert(right_colour);
                     generation_map.insert(
                         left_colour.clone(),
-                        vec![(right_colour, number)]
+                        set,
                     );
                 },
             }
         }
     }
     //println!("{:#?}", generation_map);
-    Ok(generation_map)
+    generation_map
 }
 
-pub fn how_many_bags_can_contain(generation_map: &HashMap<String, Vec<(String, usize)>>, s: &String) -> usize {
+pub fn how_many_bags_can_contain(generation_map: &HashMap<String, HashSet<String>>, search_term: &String) -> usize {
     // remove whitespace from input
-    let mut search_term = s.clone();
+    let mut search_term = search_term.clone();
     search_term.retain(|c| !c.is_whitespace());
 
     generation_map.keys()
-        .map(|colour| { recurse_this(generation_map, colour, &search_term) })
+        .filter(|s| { **s != search_term })
+        .map(|colour| {
+            let foo = can_contain(generation_map, &search_term, colour);
+            //println!();
+            foo as usize
+        })
         .sum::<usize>()
 }
 
-fn recurse_this(generation_map: &HashMap<String, Vec<(String, usize)>>, search_in: &String, search_term: &String) -> usize {
-    if search_in == search_term {
-        1
+fn can_contain(generation_map: &HashMap<String, HashSet<String>>, target_colour: &String, current_colour: &String) -> bool {
+    if current_colour == target_colour {
+        //print!(" {}!", search_term);
+        true
     } else {
-        match generation_map.get(search_in) {
-            Some(vec) => {
-                vec.iter()
-                    .map(|(s, _)| { recurse_this(generation_map, s, search_term)})
-                    .sum::<usize>()
+        //print!(" {},", search_in);
+        match generation_map.get(current_colour) {
+            Some(set) => {
+                if set.contains(target_colour) {
+                    // Fast return because we don't care about deeper solutions so long as we have found one
+                    //print!(" {}!", search_term);
+                    true
+                } else {
+                    set.iter()
+                        .any(|colour| {
+                            //print!(" {{");
+                            let foo = can_contain(generation_map, target_colour, colour);
+                            //print!(" }},");
+                            foo
+                        })
+                }
             },
-            None => 0,
+            None => {
+                //print!(" nothing");
+                false
+            },
         }
     }
 }

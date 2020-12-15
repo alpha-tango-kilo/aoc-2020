@@ -4,7 +4,7 @@ use day_7::{process_rules, how_many_bags_can_contain};
 
 fn main() -> Result<()> {
     let input = fs::read_to_string("./day_7/input")?;
-    let rules = process_rules(input)?;
+    let rules = process_rules(input);
     let answer = how_many_bags_can_contain(&rules, &String::from("shiny gold"));
 
     println!("{} bags can contain a shiny gold bag", answer);
@@ -14,7 +14,6 @@ fn main() -> Result<()> {
 
 #[cfg(test)]
 mod tests {
-    use anyhow::Result;
     use day_7::{process_rules, how_many_bags_can_contain};
 
     const INPUT: &str = "light red bags contain 1 bright white bag, 2 muted yellow bags.
@@ -28,10 +27,9 @@ faded blue bags contain no other bags.
 dotted black bags contain no other bags.";
 
     #[test]
-    fn example_data_part_one() -> Result<()> {
-        let rules = process_rules(INPUT.to_string())?;
+    fn example_data_part_one() {
+        let rules = process_rules(INPUT.to_string());
         let answer = how_many_bags_can_contain(&rules, &String::from("shiny gold"));
         assert_eq!(answer, 4);
-        Ok(())
     }
 }
