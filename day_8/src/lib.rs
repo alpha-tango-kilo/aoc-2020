@@ -5,9 +5,9 @@ use std::convert::TryFrom;
 
 pub type Program = Vec<Operation>;
 
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone)]
 pub enum Operation {
-    Nop,
+    Nop(isize),
     Acc(isize),
     Jmp(isize),
 }
@@ -27,7 +27,7 @@ impl FromStr for Operation {
         //println!("Opcode: {}\tOperand: {}", &s[..3], operand);
 
         Ok(match &s[..3] {
-            "nop" => Nop,
+            "nop" => Nop(operand),
             "acc" => Acc(operand),
             "jmp" => Jmp(operand),
               _   => return Err(Error::msg("Invalid opcode")),
@@ -53,13 +53,7 @@ impl Computer {
         }
     }
 
-    pub fn run(&mut self) -> Result<()> {
-        loop {
-            self.do_op()?;
-        }
-    }
-
-    pub fn debug_run(&mut self) -> Result<isize> {
+    pub fn part_one_run(&mut self) -> Result<isize> {
         loop {
             self.do_op()?;
             if self.trace.contains(&self.program_counter) {
@@ -68,11 +62,22 @@ impl Computer {
         }
     }
 
+    pub fn part_two_run(&mut self) -> Result<isize> {
+        loop {
+            self.do_op()?;
+            if self.program_counter == self.program.len() {
+                return Ok(self.accumulator);
+            } else if self.trace.contains(&self.program_counter) {
+                return Err(Error::msg("Looping"));
+            }
+        }
+    }
+
     fn do_op(&mut self) -> Result<()> {
         if let Some(op) = self.program.get(self.program_counter) {
             self.trace.push(self.program_counter);
             match op {
-                Nop => self.program_counter += 1,
+                Nop(_) => self.program_counter += 1,
                 Acc(n) => {
                     self.accumulator += n;
                     self.program_counter += 1;
@@ -95,4 +100,24 @@ pub fn read_program(string: String) -> Result<Vec<Operation>> {
     string.lines()
         .map(Operation::from_str)
         .collect()
+}
+
+pub fn generate_permutations(prog: Program) -> Vec<Program> {
+    let mut permutations = Vec::new();
+    for n in 0..prog.len() {
+        match prog.get(n).unwrap() {
+            Nop(operand) => {
+                let mut new_prog = prog.clone();
+                new_prog.insert(n, Jmp(*operand));
+                permutations.push(new_prog);
+            },
+            Jmp(operand) => {
+                let mut new_prog = prog.clone();
+                new_prog.insert(n, Nop(*operand));
+                permutations.push(new_prog);
+            },
+            _ => {},
+        }
+    }
+    permutations
 }
