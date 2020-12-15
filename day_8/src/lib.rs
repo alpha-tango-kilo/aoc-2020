@@ -108,12 +108,16 @@ pub fn generate_permutations(prog: Program) -> Vec<Program> {
         match prog.get(n).unwrap() {
             Nop(operand) => {
                 let mut new_prog = prog.clone();
-                new_prog.insert(n, Jmp(*operand));
+                new_prog.push(Jmp(*operand));
+                new_prog.swap_remove(n);
                 permutations.push(new_prog);
             },
             Jmp(operand) => {
                 let mut new_prog = prog.clone();
-                new_prog.insert(n, Nop(*operand));
+                // Add to end
+                new_prog.push(Nop(*operand));
+                // Removes an element from the vector and returns it. The removed element is replaced by the last element of the vector.
+                new_prog.swap_remove(n);
                 permutations.push(new_prog);
             },
             _ => {},
