@@ -43,3 +43,20 @@ impl Buffer {
         }
     }
 }
+
+pub fn find_contiguous_slice_summing_to(v: &Vec<u32>, n: &u32) -> Option<Box<[u32]>> {
+    for start_index in 0..v.len() {
+        let mut total = 0;
+        for (relative_index, current) in v[start_index..].iter().enumerate() {
+            total += current;
+            if total == *n {
+                let slice: Box<_> = v[start_index..start_index + relative_index + 1].into();
+                println!("\n{:?} sums to {}", slice, n);
+                return Some(slice);
+            } else if total > *n {
+                break;
+            }
+        }
+    }
+    None
+}
