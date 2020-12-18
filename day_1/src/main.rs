@@ -1,13 +1,12 @@
-use std::{fs, error::Error};
+use anyhow::{Result, Context};
+use std::fs;
 
-fn main() -> Result<(), Box<dyn Error>>{
+fn main() -> Result<()>{
     // Get input
     let input = fs::read_to_string("./day_1/input")?;
-    let input = input.split('\n')
-        .into_iter()
-        .filter_map(|s| -> Option<u32> { s.parse().ok() })
-        .collect::<Vec<u32>>()
-        .into_boxed_slice();
+    let input = input.lines()
+        .map(|line| { line.parse::<u16>().context("") })
+        .collect::<Result<Vec<u16>>>()?;
 
     if let Some((a, b)) = get_two_that_sum(&2020, &input) {
         println!("Product of two numbers that sum to 2020: {}", a * b);
@@ -24,30 +23,30 @@ fn main() -> Result<(), Box<dyn Error>>{
     Ok(())
 }
 
-fn get_two_that_sum<'a>(to: &u32, list: &'a [u32]) -> Option<(&'a u32, &'a u32)> {
+fn get_two_that_sum(to: &u16, list: &Vec<u16>) -> Option<(u16, u16)> {
     for (n, a) in list.iter().enumerate() {
         let (_, bs) = list.split_at(n);
-        if let Some((a, b)) = check_for_sum(to, a, bs) {
+        if let Some((a, b)) = check_for_sum(to, a, &bs.to_vec()) {
             return Some((a, b));
         }
     }
     None
 }
 
-fn get_three_that_sum<'a>(to: &u32, list: &'a [u32]) -> Option<(&'a u32, &'a u32, &'a u32)> {
+fn get_three_that_sum(to: &u16, list: &Vec<u16>) -> Option<(u16, u16, u16)> {
     for (n, a) in list.iter().enumerate() {
         let (_, bs) = list.split_at(n);
-        if let Some((b, c)) = get_two_that_sum(&(to - a), bs) {
-            return Some((a, b, c));
+        if let Some((b, c)) = get_two_that_sum(&(to - a), &bs.to_vec()) {
+            return Some((*a, b, c));
         }
     }
     None
 }
 
-fn check_for_sum<'a>(to: &u32, a: &'a u32, bs: &'a [u32]) -> Option<(&'a u32, &'a u32)> {
+fn check_for_sum(to: &u16, a: &u16, bs: &Vec<u16>) -> Option<(u16, u16)> {
     for b in bs {
         if *a + *b == *to {
-            return Some((a, b));
+            return Some((*a, *b));
         }
     }
     None
