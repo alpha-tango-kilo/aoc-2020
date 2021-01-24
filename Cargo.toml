@@ -13,3 +13,6 @@ members = [
     "day_10",
     "day_11",
 ]
+
+[profile.dev.package.day_11]
+overflow-checks = false

@@ -1,10 +1,14 @@
+use std::fmt::{self, Display};
 use std::str::FromStr;
 
 use anyhow::{Context, Error, Result};
 
+use crate::Direction::*;
 use crate::Tile::*;
 
-#[derive(Debug)]
+const DIRECTIONS: [Direction; 8] = [Up, Down, Left, Right, UpLeft, UpRight, DownLeft, DownRight];
+
+#[derive(Debug, Clone)]
 pub struct Area {
     width: usize,
     height: usize,
@@ -13,18 +17,33 @@ pub struct Area {
 }
 
 impl Area {
-    fn iterate(&mut self) {
+    fn iterate(&mut self, method: Method) {
         let mut to_toggle = vec![];
         for y in 0..self.height {
             for x in 0..self.width {
-                match self.get_at(x, y) {
-                    Some(&EmptySeat) => if self.adjacent_occupied(x, y) == 0 {
-                        to_toggle.push((x, y));
+                match method {
+                    Method::NextTo => {
+                        match self.get_at(x, y) {
+                            Some(&EmptySeat) => if self.adjacent_occupied(x, y) == 0 {
+                                to_toggle.push((x, y));
+                            },
+                            Some(&OccupiedSeat) => if self.adjacent_occupied(x, y) >= 4 {
+                                to_toggle.push((x, y));
+                            },
+                            _ => {},
+                        }
                     },
-                    Some(&OccupiedSeat) => if self.adjacent_occupied(x, y) >= 4 {
-                        to_toggle.push((x, y));
+                    Method::LineOfSight => {
+                        match self.get_at(x, y) {
+                            Some(&EmptySeat) => if self.line_of_sight_occupied(x, y) == 0 {
+                                to_toggle.push((x, y));
+                            },
+                            Some(&OccupiedSeat) => if self.line_of_sight_occupied(x, y) >= 5 {
+                                to_toggle.push((x, y));
+                            },
+                            _ => {},
+                        }
                     },
-                    _ => {},
                 }
             }
         }
@@ -37,9 +56,13 @@ impl Area {
             });
     }
 
-    pub fn iterate_until_stable(&mut self) {
+    pub fn iterate_until_stable(&mut self, method: Method) {
+        //let mut count = 0u32;
         while !self.stable {
-            self.iterate();
+            self.iterate(method);
+            //count += 1;
+            //println!("Iteration {}", count);
+            //println!("{}", self);
         }
     }
 
@@ -73,6 +96,53 @@ impl Area {
             .sum()
     }
 
+    fn line_of_sight_occupied(&self, x: usize, y: usize) -> usize {
+        DIRECTIONS.iter()
+            .map(|dir| self.direction_occupied((x, y), *dir) as usize)
+            .sum()
+    }
+
+    fn direction_occupied(&self, origin: (usize, usize), direction: Direction) -> u8 {
+        let (mut current_x, mut current_y) = origin;
+
+        // Assertions
+        assert!(current_x < self.width, "Invalid origin");
+        assert!(current_y < self.height, "Invalid origin");
+
+        match direction {
+            Up => current_y -= 1,
+            Down => current_y += 1,
+            Left => current_x -= 1,
+            Right => current_x += 1,
+            UpLeft => { current_x -= 1; current_y -= 1; },
+            UpRight => { current_x += 1; current_y -= 1; },
+            DownLeft => { current_x -= 1; current_y += 1; },
+            DownRight => { current_x += 1; current_y += 1; },
+        }
+
+        // Traverse along
+        while current_x < self.width && current_y < self.height {
+            let t = self.get_at(current_x, current_y)
+                .expect("Didn't get tile while traversing");
+            match t {
+                Floor => {},
+                EmptySeat => return 0,
+                OccupiedSeat => return 1,
+            }
+            match direction {
+                Up => current_y -= 1,
+                Down => current_y += 1,
+                Left => current_x -= 1,
+                Right => current_x += 1,
+                UpLeft => { current_x -= 1; current_y -= 1; },
+                UpRight => { current_x += 1; current_y -= 1; },
+                DownLeft => { current_x -= 1; current_y += 1; },
+                DownRight => { current_x += 1; current_y += 1; },
+            }
+        }
+        0
+    }
+
     pub fn occupied(&self) -> usize {
         self.tiles.iter()
             .map(|row| {
@@ -87,12 +157,28 @@ impl Area {
             }).sum()
     }
 
+    #[inline]
     fn get_at(&self, x: usize, y: usize) -> Option<&Tile> {
         self.tiles.get(y).and_then(|row| row.get(x))
     }
 
+    #[inline]
     fn get_at_mut(&mut self, x: usize, y: usize) -> Option<&mut Tile> {
         self.tiles.get_mut(y).and_then(|row| row.get_mut(x))
+    }
+}
+
+impl Display for Area {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
+        self.tiles.iter()
+            .map(|row| {
+                let a = row.iter()
+                    .map(|t| {
+                        write!(f, "{}", t)
+                    }).collect::<Result<_, _>>();
+                println!();
+                a
+            }).collect::<Result<_, _>>()
     }
 }
 
@@ -146,4 +232,32 @@ impl Tile {
             _   => Err(Error::msg("Invalid character for tile")),
         }
     }
+}
+
+impl Display for Tile {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
+        match self {
+            Floor => write!(f, "."),
+            EmptySeat => write!(f, "L"),
+            OccupiedSeat => write!(f, "#"),
+        }
+    }
+}
+
+#[derive(Debug, Copy, Clone)]
+pub enum Method {
+    NextTo,
+    LineOfSight,
+}
+
+#[derive(Debug, Copy, Clone)]
+enum Direction {
+    Up,
+    Down,
+    Left,
+    Right,
+    UpLeft,
+    UpRight,
+    DownLeft,
+    DownRight,
 }
